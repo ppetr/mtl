@@ -60,7 +60,7 @@ import Data.Monoid
 -- Minimal complete definition:
 -- ('writer' or 'tell') and ('contained' or ('pass' and 'listen')).
 
-class (Monoid w, Monad m) => MonadWriter w m | m -> w where
+class (Monad m) => MonadWriter w m | m -> w where
     -- | @'writer' (a,w)@ embeds a simple writer action.
     writer :: (a,w) -> m a
     writer ~(a, w) = do
@@ -90,9 +90,11 @@ class (Monoid w, Monad m) => MonadWriter w m | m -> w where
     -- | @contained m@ executes the action @m@ in a contained environment and
     -- returns its value and its output. The current output is not modified.
     contained :: m a -> m (a, w)
-    contained k =
+    contained k = do
+        -- we can retrieve mempty even if we don't have the monoid constraint:
+        ~(_, zero) <- listen (return ())
         -- listen what @k@ does, get its result and ignore its output change:
-        pass (listen k >>= \x -> return (x, const mempty))
+        pass (listen k >>= \x -> return (x, const zero))
 
 -- | @'listens' f m@ is an action that executes the action @m@ and adds
 -- the result of applying @f@ to the output to the value of the computation.
