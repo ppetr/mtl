@@ -56,6 +56,9 @@ import Data.Monoid
 --
 -- pass lets you provide a writer transformer which changes internals of
 -- the written object.
+--
+-- Minimal complete definition:
+-- ('writer' or 'tell') and ('contained' or ('pass' and 'listen')).
 
 class (Monoid w, Monad m) => MonadWriter w m | m -> w where
     -- | @'writer' (a,w)@ embeds a simple writer action.
@@ -71,10 +74,25 @@ class (Monoid w, Monad m) => MonadWriter w m | m -> w where
     -- | @'listen' m@ is an action that executes the action @m@ and adds
     -- its output to the value of the computation.
     listen :: m a -> m (a, w)
+    listen k = do
+        ~r@(_, w) <- contained k
+        tell w
+        return r
     -- | @'pass' m@ is an action that executes the action @m@, which
     -- returns a value and a function, and returns the value, applying
     -- the function to the output.
     pass   :: m (a, w -> w) -> m a
+    pass k = do
+        ~(~(x, f), w) <- contained k
+        tell (f w)
+        return x
+
+    -- | @contained m@ executes the action @m@ in a contained environment and
+    -- returns its value and its output. The current output is not modified.
+    contained :: m a -> m (a, w)
+    contained k =
+        -- listen what @k@ does, get its result and ignore its output change:
+        pass (listen k >>= \x -> return (x, const mempty))
 
 -- | @'listens' f m@ is an action that executes the action @m@ and adds
 -- the result of applying @f@ to the output to the value of the computation.
