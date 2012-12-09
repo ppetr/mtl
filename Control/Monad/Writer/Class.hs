@@ -89,6 +89,13 @@ class (Monad m) => MonadWriter w m | m -> w where
 
     -- | @contained m@ executes the action @m@ in a contained environment and
     -- returns its value and its output. The current output is not modified.
+    --
+    -- @contained@ is inverse to @writer@ in the following way:
+    --
+    -- @
+    --   writer <=< contained   = id
+    --   contained . writer     = return
+    -- @
     contained :: m a -> m (a, w)
     contained k = do
         -- we can retrieve mempty even if we don't have the monoid constraint:
